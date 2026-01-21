@@ -13,6 +13,8 @@ from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from plotly.subplots import make_subplots
 from sqlalchemy import create_engine
 import json
 
@@ -163,16 +165,16 @@ def execute_query():
         table_data = df.to_dict('records')
         columns = df.columns.tolist()
         
-        # Generate chart
-        chart_json = generate_chart(df, chart_type)
+        # Chart generation disabled
+        # chart_json = generate_chart(df, chart_type)
         
         return jsonify({
             'success': True,
             'columns': columns,
             'data': table_data,
             'row_count': len(df),
-            'chart': chart_json,
-            'chart_generated': bool(chart_json)
+            'chart': None,
+            'chart_generated': False
         })
         
     except Exception as e:
@@ -188,6 +190,17 @@ def generate_chart(df, chart_type='auto'):
     
     if len(df) == 0:
         return '<p>No data to visualize</p>'
+    
+    # Detect numeric columns
+    numeric_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+    text_cols = [col for col in df.columns if not pd.api.types.is_numeric_dtype(df[col])]
+    
+    # Check for vastly different scales (e.g., revenue vs count)
+    if len(numeric_cols) >= 2 and text_cols:
+        scales = [df[col].max() - df[col].min() for col in numeric_cols if df[col].max() > 0]
+        if len(scales) >= 2 and max(scales) / min(scales) > 100:
+            # Use dual-axis chart for vastly different scales
+            return create_dual_axis_chart(df, text_cols[0], numeric_cols)
     
     # Auto-detect chart type if not specified
     if chart_type == 'auto':
@@ -291,39 +304,113 @@ def create_bar_chart(df):
     
     y_col = numeric_cols[0]
     
-    # Check if we have multiple numeric columns (grouped bar chart)
-    if len(numeric_cols) > 1 and len(numeric_cols) <= 5:  # Limit to 5 series for readability
-        fig = go.Figure()
-        for col in numeric_cols:
-            fig.add_trace(go.Bar(name=col, x=df[x_col], y=df[col]))
-        fig.update_layout(
-            title=f'Comparison across {x_col}',
-            barmode='group',
-            height=500,
-            xaxis_title=x_col,
-            yaxis_title='Values',
-            xaxis_tickangle=-45
-        )
-    else:
-        # Single bar chart with color gradient
-        fig = px.bar(
-            df,
-            x=x_col,
-            y=y_col,
-            title=f'{y_col} by {x_col}',
-            color=y_col,
-            color_continuous_scale='Viridis',
-            text=y_col
-        )
-        fig.update_traces(texttemplate='%{text:.2s}', textposition='outside')
-        fig.update_layout(
-            height=500, 
+    # Single bar chart with color gradient
+    fig = px.bar(
+        df,
+        x=x_col,
+        y=y_col,
+        title=f'{y_col.replace("_", " ").title()} by {x_col.replace("_", " ").title()}',
+        color=y_col,
+        color_continuous_scale='Viridis',
+        text=y_col
+    )
+    fig.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+    fig.update_layout(
+        height=500, 
             xaxis_tickangle=-45,
             xaxis_title=x_col,
             yaxis_title=y_col
         )
     
     return fig
+
+def create_dual_axis_chart(df, category_col, metric_cols):
+    """Create chart with dual Y-axes for vastly different scales"""
+    
+    # Create figure with secondary y-axis
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    # Determine which metric has larger scale (put it on primary axis)
+    scale1 = df[metric_cols[0]].max() - df[metric_cols[0]].min()
+    scale2 = df[metric_cols[1]].max() - df[metric_cols[1]].min()
+    
+    if scale1 > scale2:
+        primary_metric = metric_cols[0]
+        secondary_metric = metric_cols[1]
+        primary_color = 'rgb(99, 110, 250)'
+        secondary_color = 'rgb(239, 85, 59)'
+    else:
+        primary_metric = metric_cols[1]
+        secondary_metric = metric_cols[0]
+        primary_color = 'rgb(239, 85, 59)'
+        secondary_color = 'rgb(99, 110, 250)'
+    
+    # Add primary axis trace (larger scale - e.g., revenue)
+    fig.add_trace(
+        go.Bar(
+            x=df[category_col],
+            y=df[primary_metric],
+            name=primary_metric.replace('_', ' ').title(),
+            marker_color=primary_color,
+            text=df[primary_metric],
+            texttemplate='%{text:,.0f}',
+            textposition='outside',
+            hovertemplate='<b>%{x}</b><br>' + 
+                         primary_metric.replace('_', ' ').title() + 
+                         ': %{y:,.0f}<extra></extra>'
+        ),
+        secondary_y=False
+    )
+    
+    # Add secondary axis trace (smaller scale - e.g., admissions)
+    fig.add_trace(
+        go.Bar(
+            x=df[category_col],
+            y=df[secondary_metric],
+            name=secondary_metric.replace('_', ' ').title(),
+            marker_color=secondary_color,
+            text=df[secondary_metric],
+            texttemplate='%{text}',
+            textposition='outside',
+            hovertemplate='<b>%{x}</b><br>' + 
+                         secondary_metric.replace('_', ' ').title() + 
+                         ': %{y}<extra></extra>'
+        ),
+        secondary_y=True
+    )
+    
+    # Update axes labels
+    fig.update_xaxes(
+        title_text=category_col.replace('_', ' ').title(),
+        tickangle=-45
+    )
+    fig.update_yaxes(
+        title_text=primary_metric.replace('_', ' ').title(),
+        secondary_y=False,
+        showgrid=True
+    )
+    fig.update_yaxes(
+        title_text=secondary_metric.replace('_', ' ').title(),
+        secondary_y=True,
+        showgrid=False
+    )
+    
+    # Update layout
+    fig.update_layout(
+        title=f'{primary_metric.replace("_", " ").title()} & {secondary_metric.replace("_", " ").title()} by {category_col.replace("_", " ").title()}',
+        height=600,
+        hovermode='x unified',
+        barmode='group',
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    return fig.to_json()
 
 @app.route('/get_schema')
 def get_schema():
