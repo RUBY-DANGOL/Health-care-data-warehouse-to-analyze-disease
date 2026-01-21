@@ -228,10 +228,7 @@ healthcare_dw/
 │   └── init.sql                      # Star schema DDL
 │
 ├── 📂 etl/                           # ETL pipeline
-│   └── etl.py                        # Extract-Transform-Load script
-│
-├── 📂 analytics/                     # Analysis scripts
-│   └── analysis.py                   # 14 pre-built analytics queries
+│   └── etl.py                        # Extract-Transform-Load script            
 │
 ├── 📂 webapp/                        # Web application
 │   ├── app.py                        # Flask server + API
@@ -387,14 +384,8 @@ python app.py
 
 Open: **http://localhost:5000**
 
-### Option 2: Analytics Script
 
-```bash
-cd ..\analytics
-python analysis.py
-```
-
-### Option 3: Adminer
+### Option 2: Adminer
 
 Open: **http://localhost:8080**
 
@@ -611,24 +602,6 @@ cd analytics
 python analysis.py
 ```
 
-### Available Analyses (14 Total)
-
-| # | Analysis | Description | Output |
-|---|----------|-------------|--------|
-| 1 | Disease Trend Analysis | Monthly disease case counts | Table |
-| 2 | Patient Demographics | Age distribution by disease | Table |
-| 3 | Billing Analysis | Top 10 highest-cost patients | Table |
-| 4 | Hospital Performance | Top hospitals by revenue | Table |
-| 5 | Doctor Workload | Patient count per doctor | Table |
-| 6 | Time-Based Analysis | Seasonal admission trends | Table |
-| 7 | Insurance Claims | Claims by provider | Table |
-| 8 | Admission Type Distribution | Emergency vs. Elective vs. Urgent | Table |
-| 9 | Room Utilization | Most/least used rooms | Table |
-| 10 | Test Results Analysis | Normal vs. Abnormal rates | Table |
-| 11 | Medication Patterns | Most prescribed medications | Table |
-| 12 | Age Group Analysis | Billing by age bracket | Table |
-| 13 | Gender Analysis | Cost differences by gender | Table |
-| 14 | Blood Type Distribution | Admissions by blood type | Table |
 
 ### Sample Query Output
 
@@ -663,26 +636,13 @@ Access: **http://localhost:5000**
 - Execute with button or Ctrl+Enter
 - Error handling with detailed messages
 
-#### 2. **8 Pre-built Query Templates**
-
-| Template | Visualization | Use Case |
-|----------|--------------|----------|
-| Disease Distribution | Pie Chart | See case breakdown by condition |
-| Monthly Admission Trends | Line Chart | Track admission patterns over time |
-| Hospital Performance | Bar Chart | Compare hospital revenues |
-| Insurance Provider Analysis | Pie Chart | Insurance market share |
-| Patient Demographics | Bar Chart | Age/gender distribution |
-| Top Billing Patients | Table | Identify high-cost cases |
-| Quarterly Revenue | Bar Chart | Financial performance by quarter |
-| Doctor Workload | Table | Patient distribution across doctors |
-
-#### 3. **Interactive Data Tables**
+#### 2. **Interactive Data Tables**
 - Sortable columns
 - Clean formatting
 - All query results displayed
 - Row count indicator
 
-#### 4. **Database Schema Browser**
+#### 3. **Database Schema Browser**
 - View all 7 tables
 - Column names and types
 - Foreign key relationships
